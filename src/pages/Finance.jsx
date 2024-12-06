@@ -105,18 +105,18 @@ function Finance() {
     }
 
     try {
-      const transactionRef = doc(db, "transactions", transactionId); // อ้างอิงถึงเอกสารที่ต้องการอัปเดต
-      await updateDoc(transactionRef, updatedData); // อัปเดตข้อมูลใน Firestore
+      const transactionRef = doc(db, "transactions", transactionId);
+      await updateDoc(transactionRef, updatedData);
       console.log(`Transaction ${transactionId} updated successfully.`);
-      fetchTransactions(); // อัปเดตข้อมูลใน UI
-      setSelectedTransaction(null); // ปิด Popup
+      fetchTransactions();
+      setSelectedTransaction(null);
     } catch (error) {
       console.error("Error updating transaction:", error);
     }
   };
 
   const handleEditTransaction = (transaction) => {
-    setSelectedEditTransaction({ ...transaction }); // สร้างสำเนาเพื่อแก้ไขข้อมูลใน Popup
+    setSelectedEditTransaction({ ...transaction });
   };
 
   return (
