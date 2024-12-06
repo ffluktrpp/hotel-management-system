@@ -3,6 +3,9 @@ import {
   collection,
   getDocs,
   serverTimestamp,
+  deleteDoc,
+  doc,
+  updateDoc,
 } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import { db } from "../firebase";
@@ -12,6 +15,7 @@ function Finance() {
   const [currentPage, setCurrentPage] = useState(1);
   const [transactions, setTransactions] = useState([]);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [selectedEditTransaction, setSelectedEditTransaction] = useState(null);
   const [loading, setLoading] = useState(false);
   const rowsPerPage = 8;
 
@@ -49,7 +53,7 @@ function Finance() {
 
   const [showAddPopup, setShowAddPopup] = useState(false);
   const [newTransaction, setNewTransaction] = useState({
-    type: "income", // 'income' or 'expense'
+    type: "รายรับ",
     amount: "",
     description: "",
     date: "",
@@ -75,6 +79,44 @@ function Finance() {
     } catch (error) {
       console.error("Error adding transaction:", error);
     }
+  };
+
+  const deleteTransaction = async (transactionId) => {
+    if (!transactionId) {
+      console.error("Transaction ID is not defined.");
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, "transactions", transactionId));
+      console.log(`Transaction ${transactionId} deleted successfully.`);
+      setTransactions((prev) => prev.filter((t) => t.id !== transactionId));
+      fetchTransactions();
+      setSelectedTransaction(null);
+    } catch (error) {
+      console.error("Error deleting transaction:", error);
+    }
+  };
+
+  const updateTransaction = async (transactionId, updatedData) => {
+    if (!transactionId) {
+      console.error("Transaction ID is not defined.");
+      return;
+    }
+
+    try {
+      const transactionRef = doc(db, "transactions", transactionId); // อ้างอิงถึงเอกสารที่ต้องการอัปเดต
+      await updateDoc(transactionRef, updatedData); // อัปเดตข้อมูลใน Firestore
+      console.log(`Transaction ${transactionId} updated successfully.`);
+      fetchTransactions(); // อัปเดตข้อมูลใน UI
+      setSelectedTransaction(null); // ปิด Popup
+    } catch (error) {
+      console.error("Error updating transaction:", error);
+    }
+  };
+
+  const handleEditTransaction = (transaction) => {
+    setSelectedEditTransaction({ ...transaction }); // สร้างสำเนาเพื่อแก้ไขข้อมูลใน Popup
   };
 
   return (
@@ -103,6 +145,9 @@ function Finance() {
               <thead>
                 <tr>
                   <th className="p-4 border-b border-slate-200 bg-slate-50">
+                    วันที่
+                  </th>
+                  <th className="p-4 border-b border-slate-200 bg-slate-50">
                     ประเภท
                   </th>
                   <th className="p-4 border-b border-slate-200 bg-slate-50">
@@ -114,9 +159,6 @@ function Finance() {
                   <th className="p-4 border-b border-slate-200 bg-slate-50">
                     คำอธิบาย
                   </th>
-                  <th className="p-4 border-b border-slate-200 bg-slate-50">
-                    วันที่
-                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -126,11 +168,11 @@ function Finance() {
                     className="hover:bg-slate-50 hover:cursor-pointer border-b border-slate-200 text-center"
                     onClick={() => setSelectedTransaction(transaction)}
                   >
+                    <td className="p-4 py-5">{transaction.date}</td>
                     <td className="p-4 py-5">{transaction.type}</td>
                     <td className="p-4 py-5">{transaction.amount}</td>
                     <td className="p-4 py-5">{transaction.category}</td>
                     <td className="p-4 py-5">{transaction.description}</td>
-                    <td className="p-4 py-5">{transaction.date}</td>
                   </tr>
                 ))}
               </tbody>
@@ -180,7 +222,7 @@ function Finance() {
         )}
       </div>
 
-      {/* Popup Add */}
+      {/* Popup Add Transaction */}
       {showAddPopup && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
           <div className="bg-[#FFF9BF] p-8 rounded-lg shadow-lg w-[400px]">
@@ -194,6 +236,24 @@ function Finance() {
               }}
               className="space-y-4"
             >
+              <div className="flex flex-col">
+                <label htmlFor="date" className="text-sm mb-1 text-black/80">
+                  วันที่
+                </label>
+                <input
+                  id="date"
+                  type="date"
+                  value={newTransaction.date}
+                  onChange={(e) =>
+                    setNewTransaction({
+                      ...newTransaction,
+                      date: e.target.value,
+                    })
+                  }
+                  className="px-3 py-2 border border-slate-300 rounded text-black"
+                  required
+                />
+              </div>
               <div className="flex flex-col">
                 <label htmlFor="type" className="text-sm mb-1 text-black/80">
                   ประเภท
@@ -210,8 +270,8 @@ function Finance() {
                   className="px-3 py-2 border border-slate-300 rounded text-black"
                   required
                 >
-                  <option value="income">รายรับ</option>
-                  <option value="expense">รายจ่าย</option>
+                  <option value="รายรับ">รายรับ</option>
+                  <option value="รายจ่าย">รายจ่าย</option>
                 </select>
               </div>
 
@@ -282,7 +342,101 @@ function Finance() {
                   required
                 />
               </div>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowAddPopup(false)}
+                  className="px-4 py-2 mr-2 bg-gray-300 rounded hover:bg-gray-200 text-black"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-green-300 hover:bg-green-500 rounded text-black"
+                >
+                  บันทึก
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
+      {/* Selected Transaction Details Popup */}
+      {selectedTransaction && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+          <div className="bg-white p-8 rounded-lg shadow-lg w-[400px]">
+            <h3 className="text-lg font-bold mb-4 text-black/80">
+              ข้อมูลการเงิน
+            </h3>
+            <p className="mb-2 text-black">
+              ประเภท: {selectedTransaction.type}
+            </p>
+            <p className="mb-2 text-black">
+              จำนวนเงิน: {selectedTransaction.amount}
+            </p>
+            <p className="mb-2 text-black">
+              หมวดหมู่: {selectedTransaction.category}
+            </p>
+            <p className="mb-2 text-black">
+              คำอธิบาย: {selectedTransaction.description}
+            </p>
+            <p className="mb-2 text-black">
+              วันที่: {selectedTransaction.date}
+            </p>
+            <div className="flex justify-end">
+              <button
+                className="px-4 py-2 mr-2 bg-red-300 rounded hover:bg-red-400 text-black"
+                onClick={() =>
+                  selectedTransaction?.id
+                    ? deleteTransaction(selectedTransaction.id)
+                    : console.error("No transaction selected for deletion.")
+                }
+              >
+                ลบ
+              </button>
+
+              <button
+                className="px-4 py-2 mr-2 bg-[#FDDBBB] rounded hover:bg-[#FDDBBB]/70 text-black"
+                onClick={() => {
+                  setSelectedEditTransaction(selectedTransaction);
+                  setSelectedTransaction(null); // ปิด Popup นี้
+                }}
+              >
+                แก้ไข
+              </button>
+              <button
+                className="px-4 py-2 mr-2 bg-gray-300 rounded hover:bg-gray-200 text-black"
+                onClick={() => setSelectedTransaction(null)}
+              >
+                ปิด
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Selected Edit Transaction Popup */}
+      {selectedEditTransaction && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+          <div className="bg-white p-8 rounded-lg shadow-lg w-[400px]">
+            <h3 className="text-lg font-bold mb-4 text-black/80">
+              แก้ไขข้อมูลการเงิน
+            </h3>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                updateTransaction(selectedEditTransaction.id, {
+                  type: selectedEditTransaction.type,
+                  amount: selectedEditTransaction.amount,
+                  category: selectedEditTransaction.category,
+                  description: selectedEditTransaction.description,
+                  date: selectedEditTransaction.date,
+                });
+                setSelectedEditTransaction(null); // ปิด Popup หลังบันทึก
+              }}
+              className="space-y-4"
+            >
               <div className="flex flex-col">
                 <label htmlFor="date" className="text-sm mb-1 text-black/80">
                   วันที่
@@ -290,21 +444,106 @@ function Finance() {
                 <input
                   id="date"
                   type="date"
-                  value={newTransaction.date}
+                  value={selectedEditTransaction.date}
                   onChange={(e) =>
-                    setNewTransaction({
-                      ...newTransaction,
+                    setSelectedEditTransaction({
+                      ...selectedEditTransaction,
                       date: e.target.value,
                     })
                   }
                   className="px-3 py-2 border border-slate-300 rounded text-black"
-                  required
                 />
               </div>
+
+              <div className="flex flex-col">
+                <label htmlFor="type" className="text-sm mb-1 text-black/80">
+                  ประเภท
+                </label>
+                <select
+                  id="type"
+                  value={selectedEditTransaction.type}
+                  onChange={(e) =>
+                    setSelectedEditTransaction({
+                      ...selectedEditTransaction,
+                      type: e.target.value,
+                    })
+                  }
+                  className="px-3 py-2 border border-slate-300 rounded text-black"
+                >
+                  <option value="รายรับ">รายรับ</option>
+                  <option value="รายจ่าย">รายจ่าย</option>
+                </select>
+              </div>
+
+              <div className="flex flex-col">
+                <label htmlFor="amount" className="text-sm mb-1 text-black/80">
+                  จำนวนเงิน
+                </label>
+                <input
+                  id="amount"
+                  type="number"
+                  value={selectedEditTransaction.amount}
+                  onChange={(e) =>
+                    setSelectedEditTransaction({
+                      ...selectedEditTransaction,
+                      amount: e.target.value,
+                    })
+                  }
+                  className="px-3 py-2 border border-slate-300 rounded text-black"
+                />
+              </div>
+
+              <div className="flex flex-col">
+                <label
+                  htmlFor="category"
+                  className="text-sm mb-1 text-black/80"
+                >
+                  หมวดหมู่
+                </label>
+                <select
+                  id="category"
+                  value={selectedEditTransaction.category}
+                  onChange={(e) =>
+                    setSelectedEditTransaction({
+                      ...selectedEditTransaction,
+                      category: e.target.value,
+                    })
+                  }
+                  className="px-3 py-2 border border-slate-300 rounded text-black"
+                >
+                  <option value="">เลือกหมวดหมู่</option>
+                  {transactionCategories.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col">
+                <label
+                  htmlFor="description"
+                  className="text-sm mb-1 text-black/80"
+                >
+                  คำอธิบาย
+                </label>
+                <textarea
+                  id="description"
+                  value={selectedEditTransaction.description}
+                  onChange={(e) =>
+                    setSelectedEditTransaction({
+                      ...selectedEditTransaction,
+                      description: e.target.value,
+                    })
+                  }
+                  className="px-3 py-2 border border-slate-300 rounded text-black"
+                />
+              </div>
+
               <div className="flex justify-end">
                 <button
                   type="button"
-                  onClick={() => setShowAddPopup(false)}
+                  onClick={() => setSelectedEditTransaction(null)}
                   className="px-4 py-2 mr-2 bg-gray-300 rounded hover:bg-gray-200 text-black"
                 >
                   ยกเลิก
