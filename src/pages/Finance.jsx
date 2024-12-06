@@ -115,10 +115,6 @@ function Finance() {
     }
   };
 
-  const handleEditTransaction = (transaction) => {
-    setSelectedEditTransaction({ ...transaction });
-  };
-
   return (
     <div className="transition-all">
       {/* Header */}
