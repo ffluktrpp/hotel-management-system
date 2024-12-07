@@ -1,8 +1,8 @@
-# React + Vite
+## 👥 Team Members  
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+| **Name**               | **Student ID** | **NUMBER**            | **Task**                  |  
+|-------------------------|----------------|---------------------|---------------------------|  
+| **Sirasith Klinfuengfu** | 1640701544     | NO. 04              | `Finance.jsx` CRUD        |  
+| **Tinnaphop Saelim**     | 1640704662     | NO. 18              | `Customer.jsx` CRUD       |  
+| **Phawin Thongsen**      | 1640704969     | NO. 20              | `Employee.jsx` CRUD       |  
+| **Theerapat Srichompoo** | 1640705321     | NO. 23              | `Booking.jsx` CRUD        |  
