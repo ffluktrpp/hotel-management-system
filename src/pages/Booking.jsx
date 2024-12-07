@@ -1,8 +1,11 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
+  doc,
   getDocs,
   serverTimestamp,
+  updateDoc,
 } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import { db } from "../firebase";
@@ -83,6 +86,38 @@ function Booking() {
       setShowAddPopup(false);
     } catch (error) {
       console.error("Error adding booking:", error);
+    }
+  };
+
+  const deleteBooking = async (bookingId) => {
+    if (!bookingId) {
+      console.error("Booking ID is not defined.");
+      return;
+    }
+    try {
+      await deleteDoc(doc(db, "bookings", bookingId));
+      setBookings((prev) => prev.filter((b) => b.id !== bookingId));
+      setSelectedBooking(null);
+    } catch (error) {
+      console.error("Error deleting booking:", error);
+    }
+  };
+
+  const [showEditPopup, setShowEditPopup] = useState(false);
+  const [editBooking, setEditBooking] = useState(null);
+
+  const updateBooking = async (bookingId, updatedData) => {
+    if (!bookingId) {
+      console.error("Booking ID is not defined.");
+      return;
+    }
+    try {
+      const bookingRef = doc(db, "bookings", bookingId);
+      await updateDoc(bookingRef, updatedData);
+      fetchBookings();
+      setSelectedBooking(null);
+    } catch (error) {
+      console.error("Error updating booking:", error);
     }
   };
 
@@ -412,13 +447,17 @@ function Booking() {
             <div className="flex justify-end">
               <button
                 className="px-4 py-2 mr-2 bg-red-300 rounded hover:bg-red-400 text-black"
-                onClick={() => setSelectedBooking(null)}
+                onClick={() => deleteBooking(selectedBooking.id)}
               >
                 ลบ
               </button>
               <button
                 className="px-4 py-2 mr-2 bg-[#FDDBBB] rounded hover:bg-[#FDDBBB]/70 text-black"
-                onClick={() => setSelectedBooking(null)}
+                onClick={() => {
+                  setSelectedBooking(selectedBooking);
+                  setEditBooking(selectedBooking);
+                  setShowEditPopup(true);
+                }}
               >
                 แก้ไข
               </button>
@@ -429,6 +468,99 @@ function Booking() {
                 ปิด
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Popup Edit */}
+      {showEditPopup && editBooking && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+          <div className="bg-[#FFF9BF] p-8 rounded-lg shadow-lg w-[400px]">
+            <h3 className="text-lg font-bold mb-4 text-black/80">
+              แก้ไขการจอง
+            </h3>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const updatedTotal = calculateTotal(
+                  editBooking.checkIn,
+                  editBooking.checkOut,
+                  editBooking.pricePerNight
+                );
+                updateBooking(editBooking.id, {
+                  ...editBooking,
+                  total: updatedTotal,
+                });
+                setShowEditPopup(false);
+              }}
+              className="space-y-4"
+            >
+              <div className="flex flex-col">
+                <label
+                  htmlFor="roomNoEdit"
+                  className="text-sm mb-1 text-black/80"
+                >
+                  หมายเลขห้อง
+                </label>
+                <input
+                  id="roomNoEdit"
+                  value={editBooking.roomNo}
+                  onChange={(e) =>
+                    setEditBooking({ ...editBooking, roomNo: e.target.value })
+                  }
+                  className="px-3 py-2 border border-slate-300 rounded text-black"
+                  required
+                />
+              </div>
+
+              <div className="flex flex-col">
+                <label
+                  htmlFor="typeEdit"
+                  className="text-sm mb-1 text-black/80"
+                >
+                  ประเภทห้องพัก
+                </label>
+                <select
+                  id="typeEdit"
+                  value={editBooking.type}
+                  onChange={(e) => {
+                    const selectedType = roomTypes.find(
+                      (type) => type.label === e.target.value
+                    );
+                    setEditBooking({
+                      ...editBooking,
+                      type: selectedType.label,
+                      pricePerNight: selectedType.price,
+                    });
+                  }}
+                  className="px-3 py-2 border border-slate-300 rounded text-black"
+                  required
+                >
+                  <option value="">เลือกประเภทห้องพัก</option>
+                  {roomTypes.map((room) => (
+                    <option key={room.label} value={room.label}>
+                      {room.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowEditPopup(false)}
+                  className="px-4 py-2 mr-2 bg-gray-300 rounded hover:bg-gray-200 text-black"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-300 hover:bg-blue-500 rounded text-black"
+                >
+                  บันทึก
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
